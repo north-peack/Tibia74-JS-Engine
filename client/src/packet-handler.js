@@ -888,16 +888,19 @@ PacketHandler.prototype.handleCreatureServerMove = function(packet) {
     return;
   }
 
-  // Execute movement
-  gameClient.world.__handleCreatureMove(packet.id, packet.position, packet.speed);
-
-  // If the entity being reference is the player: we confirm the client-side walking and check existing references against entities
-  // This means that we can drop references to entities that no longer share a neighbouring sector with us
+  // The player walks ahead of the server: this confirmation may arrive after the client
+  // already stepped further along its path. Rewinding to the older position makes the
+  // character stutter and walk backwards, so the local prediction is left untouched.
+  // When the server rejects a step it sends an entity teleport, which is authoritative.
   if(gameClient.isSelf(entity)) {
     gameClient.player.confirmClientWalk();
     gameClient.world.checkEntityReferences();
     gameClient.world.checkChunks();
+    return;
   }
+
+  // Other creatures are fully controlled by the server
+  gameClient.world.__handleCreatureMove(packet.id, packet.position, packet.speed);
 
 }
 
@@ -988,6 +991,12 @@ PacketHandler.prototype.handleEntityReference = function(packet) {
   // Do not reference self but add
   if(gameClient.player && packet.id === gameClient.player.id) {
     return gameClient.world.addCreature(gameClient.player);
+  }
+
+  // Already known: the server resends the state of the creatures in the chunks
+  // the player enters. Creating them again would leave a stale reference on the tile.
+  if(gameClient.world.getCreature(packet.id) !== null) {
+    return;
   }
 
   gameClient.world.createCreature(packet.id, new Creature(packet));

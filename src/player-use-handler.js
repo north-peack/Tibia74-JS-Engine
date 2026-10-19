@@ -82,7 +82,7 @@ UseHandler.prototype.handleItemUse = function(packet) {
   let item;
   // Delegate to the appropriate handler
   if(packet.which.constructor.name === "Tile") {
-    item = this.handleTileUse(packet.which);
+    item = this.handleTileUse(packet.which, packet.index);
   } else if(packet.which.constructor.name === "Equipment" || packet.which.constructor.name === "DepotContainer" || packet.which.isContainer()) {
     item = packet.which.peekIndex(packet.index);
   }
@@ -129,7 +129,7 @@ UseHandler.prototype.handleItemUse = function(packet) {
 
 }
 
-UseHandler.prototype.handleTileUse = function(tile) {
+UseHandler.prototype.handleTileUse = function(tile, index) {
 
   /*
    * Function UseHandler.handleTileUse
@@ -141,7 +141,10 @@ UseHandler.prototype.handleTileUse = function(tile) {
     return null;
   }
 
-  return tile.getTopItem();
+  // Use the item that was clicked: the top item is used as a fallback
+  let item = tile.peekIndex(index);
+
+  return (item === null) ? tile.getTopItem() : item;
 
 }
 

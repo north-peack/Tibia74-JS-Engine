@@ -1,6 +1,40 @@
+const fs = require("fs");
 const path = require("path");
 
+function mergeConfiguration(target, source) {
+
+  /*
+   * Function mergeConfiguration
+   * Recursively overrides the configuration with a local configuration object
+   */
+
+  Object.keys(source).forEach(function(key) {
+
+    if(source[key] !== null && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      if(typeof target[key] !== "object" || target[key] === null) {
+        target[key] = {};
+      }
+
+      return mergeConfiguration(target[key], source[key]);
+    }
+
+    target[key] = source[key];
+
+  });
+
+  return target;
+
+}
+
+// Base configuration, optionally overridden by an untracked local file that
+// holds secrets or machine specific settings (see config.local.json)
 global.CONFIG = require("./config");
+
+const localConfiguration = path.join(__dirname, "config.local.json");
+
+if(fs.existsSync(localConfiguration)) {
+  mergeConfiguration(CONFIG, JSON.parse(fs.readFileSync(localConfiguration, "utf8")));
+}
 
 // Create some useful global functions
 global.getDataFile = function() {

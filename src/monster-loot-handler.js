@@ -9,8 +9,8 @@ const LootHandler = function(loot) {
    * Handler for loot for monsters
    */
 
-  // Create instances of loot
-  this.loots = loot.map(x => new LootEntry(x));
+  // Create instances of loot (a monster may not define any loot)
+  this.loots = (loot || []).map(x => new LootEntry(x));
 
 }
 

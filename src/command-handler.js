@@ -73,7 +73,11 @@ CommandHandler.prototype.handle = function(player, message) {
 
   if(message[0] === "/spawn") {
     let id = Number(message[1]);
-    return gameServer.world.creatureHandler.spawnCreature(id, player.getPosition());
+
+    // Optional respawn time in seconds (defaults to no respawn)
+    let respawnTime = Number(message[2]) || 0;
+
+    return gameServer.world.creatureHandler.spawnCreature(id, player.getPosition(), respawnTime);
   }
 
   if(message[0] === "/path") {

@@ -383,9 +383,20 @@ CreatureHandler.prototype.dieCreature = function(creature) {
   // Remove the creature from the world
   this.removeCreature(creature);
 
+  // Schedule the respawn of the monster after its configured time
+  if(creature instanceof Monster && creature.respawnTime > 0) {
+    let cid = creature.cid;
+    let position = creature.spawnPosition;
+    let respawnTime = creature.respawnTime;
+
+    gameServer.world.eventQueue.addEventMs(function() {
+      this.spawnCreature(cid, position, respawnTime);
+    }.bind(this), respawnTime * 1000);
+  }
+
 }
 
-CreatureHandler.prototype.spawnCreature = function(cid, position) {
+CreatureHandler.prototype.spawnCreature = function(cid, position, respawnTime) {
 
   /*
    * Function World.spawnCreature
@@ -395,22 +406,28 @@ CreatureHandler.prototype.spawnCreature = function(cid, position) {
   let data = gameServer.database.getMonster(cid);
 
   if(data === null) {
-    return;
+    return false;
   }
 
   let monster = new Monster(cid, data);
+
+  // Save the spawn information so the monster can be respawned after death
+  monster.spawnPosition = position;
+  monster.respawnTime = respawnTime || 0;
 
   // Find an available tile for the player
   let tile = gameServer.world.findAvailableTile(monster, position);
 
   // Impossible to add the creature
   if(tile === null) {
-    return;
+    return false;
   }
 
   // Add the creature to the world at the position
   this.addCreaturePosition(monster, tile.position);
   gameServer.world.sendMagicEffect(tile.position, CONST.EFFECT.MAGIC.TELEPORT);
+
+  return true;
 
 }
 
@@ -437,8 +454,17 @@ CreatureHandler.prototype.handleChunkChange = function(creature, oldChunk, newCh
   }
 
   // Enter and leave the complements of the old/new chunks
-  creature.enterNewChunks(oldChunk.difference(newChunk));
+  let enteredChunks = oldChunk.difference(newChunk);
+
+  creature.enterNewChunks(enteredChunks);
   creature.leaveOldChunks(newChunk.difference(oldChunk));
+
+  // A player that moves (or teleports) to a new area also needs the tiles and
+  // creatures of the chunks it can now see: otherwise the map stays empty until
+  // something moves (or the player logs in again)
+  if(creature.isPlayer()) {
+    enteredChunks.forEach(chunk => chunk.serialize(creature.socketHandler));
+  }
 
 }
 

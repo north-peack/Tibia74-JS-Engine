@@ -48,8 +48,6 @@ CombatHandler.prototype.handleCombat = function(source) {
     return gameServer.world.sendMagicEffect(target.position, CONST.EFFECT.MAGIC.BLOCKHIT);
   }
 
-  unmitigatedDamage = 2;
-
   // Remove health from target
   return target.decreaseHealth(source, unmitigatedDamage);
 

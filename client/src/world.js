@@ -40,6 +40,11 @@ World.prototype.handleSelfTeleport = function() {
   // Set some state
   gameClient.player.__teleported = true;
   gameClient.player.__serverWalkConfirmation = true;
+
+  // A previously planned path belongs to the old position: walking it would
+  // only produce rejected steps and snap the character back
+  gameClient.world.pathfinder.setPathfindCache(null);
+
   gameClient.world.checkEntityReferences();
   gameClient.world.checkChunks();
   gameClient.renderer.updateTileCache();
@@ -398,8 +403,8 @@ World.prototype.targetMonster = function(monsters) {
     return;
   }
 
-  // Only monsters can be attacked
-  if(monster.constructor.name !== "Creature") {
+  // Only monsters can be attacked (players and NPCs cannot)
+  if(monster.type !== 1) {
     return gameClient.interface.notificationManager.setCancelMessage("You cannot attack this creature.");
   }
 

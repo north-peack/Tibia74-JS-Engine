@@ -37,6 +37,7 @@ const MonsterBehaviour = function(monster, behaviour) {
 
   this.ignoreCharacters = false;
   this.openDoors = behaviour.openDoors;
+  this.fleeHealth = behaviour.fleeHealth || 0;
 
   this.setBehaviour(behaviour.type);
 
@@ -104,6 +105,11 @@ MonsterBehaviour.prototype.handleActionSpeak = function() {
    * Function MonsterBehaviour.handleActionSpeak
    * Handles speaking action of the monster
    */
+
+  // This monster has no sayings configured: do nothing
+  if(!this.sayings || !this.sayings.texts || this.sayings.texts.length === 0) {
+    return this.actions.lock(this.handleActionSpeak, 1000);
+  }
 
   // Say a random thing
   if(Math.random() > 0.15) {
@@ -265,7 +271,7 @@ MonsterBehaviour.prototype.handleDamage = function(attacker) {
   }
 
   // Fleeing
-  if(this.monster.health <= this.fleeHealth) {
+  if(this.monster.getProperty(CONST.PROPERTIES.HEALTH) <= this.fleeHealth) {
     this.setState(this.FLEEING);
     this.setTarget(attacker);
   }
@@ -356,14 +362,31 @@ MonsterBehaviour.prototype.getNextMoveTile = function() {
 
 MonsterBehaviour.prototype.setBehaviour = function(state) {
 
+  // Older definitions use the behaviour name instead of its identifier
+  if(typeof state === "string") {
+    state = this[state.toUpperCase()];
+  }
+
+  this.setState((state === undefined) ? this.NEUTRAL : state);
+
+}
+
+MonsterBehaviour.prototype.setState = function(state) {
+
+  /*
+   * Function MonsterBehaviour.setState
+   * Updates the behaviour state and the actions that belong to it
+   */
+
   // Set the state
   this.state = state;
 
   // Monsters have these actions
   this.actions.add(this.handleActionMove);
   this.actions.add(this.handleActionSpeak);
-  
-  if(this.is(this.HOSTILE)) {
+
+  // Behaviours that require a target to fight or run from it
+  if(this.is(this.HOSTILE) || this.is(this.FLEEING) || this.is(this.RANGED)) {
     this.actions.add(this.handleActionAttack);
     this.actions.add(this.handleActionTarget);
   } else {

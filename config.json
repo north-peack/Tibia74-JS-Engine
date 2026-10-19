@@ -63,10 +63,17 @@
       "START": "08:00"
     },
     "SPAWNS": {
-      "ENABLED": false
+      "ENABLED": true,
+      "MAX_SPAWNS": 150,
+      "RADIUS": 100,
+      "PRIORITY_CENTER": {
+        "x": 32097,
+        "y": 32215,
+        "z": 8
+      }
     },
     "NPCS": {
-      "ENABLED": false
+      "ENABLED": true
     }
   }
 }

@@ -9,6 +9,7 @@ const House = require("./house");
 const Item = require("./item");
 const Key = require("./key");
 const NPC = require("./npc");
+const Position = requireModule("position");
 const Readable = require("./readable");
 const Rune = require("./rune");
 const Teleporter = requireModule("teleporter");
@@ -393,6 +394,70 @@ Database.prototype.__loadSpawnDefinitions = function(definition) {
    * Loads all the configured spawns and associated monsters
    */
 
+  // Resolve the monster definitions by their name
+  let identifiers = new Map();
+
+  this.monsters.forEach(function(data, id) {
+
+    let name = data.creatureStatistics.name.toLowerCase();
+
+    if(!identifiers.has(name)) {
+      identifiers.set(name, id);
+    }
+
+  });
+
+  // Collect the spawns that can be created and prioritise the ones near the center
+  let center = CONFIG.WORLD.SPAWNS.PRIORITY_CENTER;
+  let radius = CONFIG.WORLD.SPAWNS.RADIUS || 0;
+  let candidates = [];
+
+  this.readDataDefinition(definition).forEach(function(spawn) {
+
+    let name = String(spawn.mid).toLowerCase();
+
+    if(!identifiers.has(name)) {
+      return;
+    }
+
+    // Only spawn monsters within the configured radius around the priority center
+    if(center && radius > 0) {
+      let distance = Math.pow(spawn.position.x - center.x, 2) + Math.pow(spawn.position.y - center.y, 2);
+
+      if(distance > radius * radius) {
+        return;
+      }
+    }
+
+    candidates.push({cid: identifiers.get(name), spawn: spawn});
+
+  });
+
+  // Spawn the monsters closest to the priority center first
+  if(center) {
+    candidates.sort(function(a, b) {
+      let distanceA = Math.pow(a.spawn.position.x - center.x, 2) + Math.pow(a.spawn.position.y - center.y, 2);
+      let distanceB = Math.pow(b.spawn.position.x - center.x, 2) + Math.pow(b.spawn.position.y - center.y, 2);
+      return distanceA - distanceB;
+    });
+  }
+
+  let maximum = CONFIG.WORLD.SPAWNS.MAX_SPAWNS || 0;
+
+  if(maximum > 0) {
+    candidates = candidates.slice(0, maximum);
+  }
+
+  let total = 0;
+
+  candidates.forEach(function(entry) {
+    if(gameServer.world.creatureHandler.spawnCreature(entry.cid, Position.prototype.fromLiteral(entry.spawn.position), entry.spawn.respawnTime)) {
+      total++;
+    }
+  });
+
+  console.log("Spawned [[ %s ]] monsters.".format(total));
+
 }
 
 Database.prototype.__loadNPCDefinitions = function(definition) {
@@ -452,7 +517,7 @@ Database.prototype.__loadDefinitions = function(definition) {
     reference.set(Number(key), require(getDataFile(definition, "definitions", value)));
   });
 
-  console.log("Loaded [[ %s ]] %s definitions.".format(Object.keys(reference).length, definition));
+  console.log("Loaded [[ %s ]] %s definitions.".format(reference.size, definition));
 
   return reference;
 
